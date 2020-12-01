@@ -208,7 +208,7 @@ function getMedia() {
   console.log('Getting user media (audio) ...');
   navigator.mediaDevices.getUserMedia({
     audio: true,
-    video: { width: 1980, height: 1080, frameRate: { ideal: 30, max: 60 } }
+    video: { width: 480, height: 320, frameRate: { ideal: 30, max: 60 } }
   })
     .then(gotStream)
     .catch(function (e) {
