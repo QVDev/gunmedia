@@ -4,6 +4,7 @@
 <head>
   <title>WebRTC Audio</title>
   <link href="styles/main.css" rel="stylesheet" type="text/css">
+  <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
 </head>
 
 <body>
@@ -54,14 +55,14 @@
 
       <div id="compressionContainer">
         <p> Input the jpeg compression quality (Higher is better): </p>
-        <input id="compressionSlider" class="slider" type="range" min="1" max="100" value="92" oninput="changeCompression(this.value)"/>
-        <span id="compressionNumber"> 92 </span>
+        <input id="compressionSlider" class="slider" type="range" min="1" max="100" value="20" oninput="changeCompression(this.value)"/>
+        <span id="compressionNumber"> 20 </span>
       </div>
 
       <div id="scaleContainer">
         <p> Input the scale quality (Higher is better): </p>
-        <input id="scaleSlider" class="slider" type="range" min="1" max="100" value="100" oninput="changeScaleView(this.value)" onchange="changeScaleInput(this.value)" disabled/>
-        <span id="scaleNumber">100</span>
+        <input id="scaleSlider" class="slider" type="range" min="1" max="100" value="20" oninput="changeScaleView(this.value)" onchange="changeScaleInput(this.value)" />
+        <span id="scaleNumber">20</span>
       </div>
 
       <div id="frameperiodContainer">
@@ -104,8 +105,8 @@
     </div>
   </div>
 
-  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.3/socket.io.js"></script> -->
-  <script src="/socket.io/socket.io.js/"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.3/socket.io.js"></script>
+  <!-- <script src="/socket.io/socket.io.js/"></script> -->
   <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
   <script src="js/main.js"></script>
 </body>

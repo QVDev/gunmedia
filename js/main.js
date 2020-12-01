@@ -4,46 +4,46 @@
 // Audio worker node forwarding audio data uncompressed onto a data channel
 //
 class AudioSampleQueue {
-    // Queue class for 32bit float audio samples
-    constructor(maxqueuelength = 1024) {
+  // Queue class for 32bit float audio samples
+  constructor(maxqueuelength = 1024) {
     this.maxQueueLength = maxqueuelength;
     this.queue = new Float32Array(this.maxQueueLength);
     this.front = 0;
     this.end = 0;
     this.empty = true;
-    }
+  }
 
-    enqueue(sample) {
+  enqueue(sample) {
     // Insert sample at end of queue
     if (this.length() == this.maxQueueLength) {
-        // console.log("Queue is full.")
+      // console.log("Queue is full.")
     } else {
-        this.queue[this.end] = sample;
-        this.end = (this.end + 1) % this.maxQueueLength;
-        this.empty = false;
+      this.queue[this.end] = sample;
+      this.end = (this.end + 1) % this.maxQueueLength;
+      this.empty = false;
     }
-    }
+  }
 
-    dequeue() {
+  dequeue() {
     // Remove and return sample from front of queue
     if (this.length() > 0) {
-        var sample = this.queue[this.front];
-        this.front = (this.front + 1) % this.maxQueueLength;
-        this.empty = (this.front == this.end);
-        return sample;
+      var sample = this.queue[this.front];
+      this.front = (this.front + 1) % this.maxQueueLength;
+      this.empty = (this.front == this.end);
+      return sample;
     }
     // console.log("Queue is empty (" + this.front + ")");
     return null;
-    }
+  }
 
-    length() {
+  length() {
     // Return length of queue
-        if (this.empty) {
-        return 0;
+    if (this.empty) {
+      return 0;
     }
     var l = (this.end - this.front + this.maxQueueLength) % this.maxQueueLength;
     return l == 0 ? this.maxQueueLength : l;
-    }
+  }
 }
 
 var configuration = null;
@@ -80,9 +80,9 @@ var photoContextW;
 var photoContextH;
 var bytesReceived = 0;
 var bytesSent = 0;
-var jpegQuality = (document.getElementById("compressionNumber").innerHTML)/100;
+var jpegQuality = (document.getElementById("compressionNumber").innerHTML) / 100;
 var framePeriod = document.getElementById("frameperiodNumber").innerHTML;
-var scale = (document.getElementById("scaleNumber").innerHTML)/100;
+var scale = (document.getElementById("scaleNumber").innerHTML) / 100;
 var remoteScale;
 
 // Peerconnection and data channel variables
@@ -93,7 +93,7 @@ var videoDataChannel;
 // Audio buffer variables
 var bufferSize = document.getElementById('bufferSizeSelector').value;
 console.log(bufferSize);
-var txrxBufferSize = bufferSize*10;
+var txrxBufferSize = bufferSize * 10;
 var peerCon;
 var output1 = new AudioSampleQueue(txrxBufferSize);
 var output2 = new AudioSampleQueue(txrxBufferSize);
@@ -109,17 +109,43 @@ var isInitiator;
 // Check if the room is in the URL, if not - promp the user to type in a room name.
 var room = window.location.hash.substring(1);
 if (!room) {
-  room = window.location.hash = prompt('Enter a room name:');
+  // room = window.location.hash = prompt('Enter a room name:');
+}
+
+var sender = receiveVideoData()
+var audio = receiveLiveData();
+const gun = Gun('https://gunptt.herokuapp.com/gun');
+
+gun.on("in", function (msg) {
+  if (msg.type == "video") {
+    sender(msg);
+  } else if (msg.type == "audio") {
+    audio(msg)
+  }
+})
+
+function send(data) {
+  // data.socketId = self.socketId;
+  // data.pid = self.root._.opt.pid;
+  // data.room = self.room;
+  gun.on("out", {
+    type: data.type,
+    data: data.data
+  });
 }
 
 /*******************************************************************************
 * Signaling Server
 *******************************************************************************/
 //Connect to the signaling server
-var socket = io.connect();
+var socket = io.connect("wss://socketio-chat-h9jt.herokuapp.com/socket.io/");
+
+getMedia();
+
+
 
 // Listens to the servers console logs
-socket.on('log', function(array) {
+socket.on('log', function (array) {
   console.log.apply(console, array);
 });
 
@@ -130,35 +156,35 @@ if (room !== '') {
 }
 
 // Set the turn/stun server credentials the server gives us
-socket.on('credentials', function(credentials) {
+socket.on('credentials', function (credentials) {
   configuration = credentials;
 })
 
-socket.on('created', function(room, clientId) {
+socket.on('created', function (room, clientId) {
   console.log('Created room ' + room);
   isInitiator = true;
   getMedia();
 });
 
-socket.on('joined', function(room, clientId) {
+socket.on('joined', function (room, clientId) {
   console.log('joined ' + room);
   isInitiator = false;
   createPeerConnection(isInitiator, configuration);
   getMedia();
 });
 
-socket.on('full', function(room, clientId) {
+socket.on('full', function (room, clientId) {
   var newRoom = window.location.hash = prompt('Room ' + room + ' is full. Enter a new room name:');
   socket.emit('create or join', newRoom);
   console.log('Attempting to create a new room because room ' + room + ' is full.');
 });
 
-socket.on('ready', function() {
+socket.on('ready', function () {
   console.log('Socket is ready');
   createPeerConnection(isInitiator, configuration);
 });
 
-socket.on('message', function(message) {
+socket.on('message', function (message) {
   console.log('Client received message:', message);
   signalingMessageCallback(message);
 });
@@ -175,16 +201,16 @@ function sendMessage(message) {
 * User media (audio and video)
 ****************************************************************************/
 
-function getMedia(){
+function getMedia() {
   console.log('Getting user media (audio) ...');
   navigator.mediaDevices.getUserMedia({
     audio: true,
-    video: {width: 1980, height: 1080, frameRate: { ideal: 30, max: 60 }}
+    video: { width: 1980, height: 1080, frameRate: { ideal: 30, max: 60 } }
   })
-  .then(gotStream)
-  .catch(function(e) {
-    alert('Error: ' + e.name);
-  });
+    .then(gotStream)
+    .catch(function (e) {
+      alert('Error: ' + e.name);
+    });
 }
 
 function gotStream(stream) {
@@ -192,7 +218,7 @@ function gotStream(stream) {
   localStream = stream;
   var audioTracks = localStream.getAudioTracks();
   var videoTracks = localStream.getVideoTracks();
-  if(audioTracks.length > 0) {
+  if (audioTracks.length > 0) {
     console.log('Using Audio device: ' + audioTracks[0].label);
     console.log('Using Video device: ' + videoTracks[0].label);
   }
@@ -201,18 +227,21 @@ function gotStream(stream) {
   // var streamURL = window.URL.createObjectURL(stream);
   localVideo.srcObject = stream;
 
-  localVideo.onloadedmetadata = function() {
+  localVideo.onloadedmetadata = function () {
     localCanvas.width = photoContextW = localVideo.videoWidth;
     localCanvas.height = photoContextH = localVideo.videoHeight;
     remoteCanvas.width = photoContextW;
     remoteCanvas.height = photoContextH;
     console.log('gotStream with with and height:', photoContextW, photoContextH);
+    liveBtn.disabled = false;
+    videoBtn.disabled = false;
+    scaleSlider.disabled = false;
   };
   localContext.save();
-  videoBtn.onclick = function() {
+  videoBtn.onclick = function () {
     videoBtn.disabled = true;
     stopVideoBtn.disabled = false;
-    localContext.scale(scale,scale);
+    localContext.scale(scale, scale);
     localCanvas.width = photoContextW * scale;
     localCanvas.height = photoContextH * scale;
     scaleSlider.disabled = true;
@@ -223,7 +252,7 @@ function gotStream(stream) {
 
   // Live audio starts
   printBitRate();
-  liveBtn.onclick = function() {
+  liveBtn.onclick = function () {
     liveBtn.disabled = true;
     stopLiveBtn.disabled = false;
     document.getElementById('bufferSizeSelector').disabled = true;
@@ -233,7 +262,7 @@ function gotStream(stream) {
     sendMessage('startLive');
   }
 
-  stopLiveBtn.onclick = function() {
+  stopLiveBtn.onclick = function () {
     audioContextSource.disconnect(scriptNode);
     scriptNode.disconnect(audioContext.destination);
     liveBtn.disabled = false;
@@ -252,7 +281,7 @@ function gotStream(stream) {
   var chunks = [];
   recordBtn.disabled = false
 
-  recordBtn.onclick = function() {
+  recordBtn.onclick = function () {
     recordBtn.disabled = true;
     stopBtn.disabled = false;
 
@@ -260,20 +289,20 @@ function gotStream(stream) {
     console.log(mediaRecorder.state);
   }
 
-  stopBtn.onclick = function() {
+  stopBtn.onclick = function () {
     recordBtn.disabled = false;
     stopBtn.disabled = true;
     mediaRecorder.stop();
   }
 
-  mediaRecorder.onstop = function(e) {
+  mediaRecorder.onstop = function (e) {
     console.log("data available after MediaRecorder.stop() called.");
-    var blob = new Blob(chunks, { 'type' : 'audio/ogg; codecs=opus' });
+    var blob = new Blob(chunks, { 'type': 'audio/ogg; codecs=opus' });
     saveAudioClip(blob);
     chunks = [];
   }
 
-  mediaRecorder.ondataavailable = function(e) {
+  mediaRecorder.ondataavailable = function (e) {
     chunks.push(e.data);
     console.log(e.data);
   }
@@ -288,12 +317,12 @@ function gotStream(stream) {
 function signalingMessageCallback(message) {
   if (message.type === 'offer') {
     console.log('Got offer. Sending answer to peer.');
-    peerCon.setRemoteDescription(new RTCSessionDescription(message), function(){}, logError);
+    peerCon.setRemoteDescription(new RTCSessionDescription(message), function () { }, logError);
     peerCon.createAnswer(onLocalSessionCreated, logError);
 
   } else if (message.type === 'answer') {
     console.log('Got answer');
-    peerCon.setRemoteDescription(new RTCSessionDescription(message), function (){}, logError);
+    peerCon.setRemoteDescription(new RTCSessionDescription(message), function () { }, logError);
 
   } else if (message.type === 'candidate') {
     peerCon.addIceCandidate(new RTCIceCandidate({
@@ -335,9 +364,9 @@ function createPeerConnection(isInitiator, config) {
   peerCon = new RTCPeerConnection(config);
 
   // Send any ice candidates to the other peer
-  peerCon.onicecandidate = function(event) {
+  peerCon.onicecandidate = function (event) {
     console.log('icecandidate event: ', event);
-    if(event.candidate) {
+    if (event.candidate) {
       sendMessage({
         type: 'candidate',
         label: event.candidate.sdpMLineIndex,
@@ -350,12 +379,12 @@ function createPeerConnection(isInitiator, config) {
     }
   };
 
-  if(isInitiator) {
+  if (isInitiator) {
     console.log('Creating Data Channel');
     // Decide UDP or TCP
-    liveDataChannel = peerCon.createDataChannel('live', {maxRetransmits: 0, ordered: false});
+    liveDataChannel = peerCon.createDataChannel('live', { maxRetransmits: 0, ordered: false });
     clipDataChannel = peerCon.createDataChannel('clip');
-    videoDataChannel = peerCon.createDataChannel('video', {maxRetransmits: 0, ordered: true});
+    videoDataChannel = peerCon.createDataChannel('video', { maxRetransmits: 0, ordered: true });
     onDataChannelCreated(liveDataChannel);
     onDataChannelCreated(clipDataChannel);
     onDataChannelCreated(videoDataChannel);
@@ -364,12 +393,12 @@ function createPeerConnection(isInitiator, config) {
     peerCon.createOffer(onLocalSessionCreated, logError);
 
   } else {
-    peerCon.ondatachannel = function(event) {
+    peerCon.ondatachannel = function (event) {
       console.log('ondatachannel:', event.channel);
-      if(event.channel.label == 'live'){
+      if (event.channel.label == 'live') {
         liveDataChannel = event.channel;
         onDataChannelCreated(liveDataChannel);
-      } else if(event.channel.label == 'clip'){
+      } else if (event.channel.label == 'clip') {
         clipDataChannel = event.channel;
         onDataChannelCreated(clipDataChannel);
       } else {
@@ -383,7 +412,7 @@ function createPeerConnection(isInitiator, config) {
 
 function onLocalSessionCreated(desc) {
   console.log('local session created: ', desc);
-  peerCon.setLocalDescription(desc, function() {
+  peerCon.setLocalDescription(desc, function () {
     console.log('sending local desc: ', peerCon.localDescription);
     sendMessage(peerCon.localDescription);
   }, logError);
@@ -392,7 +421,7 @@ function onLocalSessionCreated(desc) {
 function onDataChannelCreated(channel) {
   console.log('onDataChannelCreated: ', channel);
 
-  channel.onopen = function() {
+  channel.onopen = function () {
     console.log('CHANNEL opened!');
     dataChannelNotification.textContent = 'Data channel connection established!';
     dataChannelNotification.style.color = 'green';
@@ -402,15 +431,15 @@ function onDataChannelCreated(channel) {
   };
 
   // onmessage stores an EventHandler for whenever something is fired on the dataChannel
-  if(channel.label == 'live') {
+  if (channel.label == 'live') {
     channel.onmessage = receiveLiveData();
-  } else if(channel.label == 'clip'){
+  } else if (channel.label == 'clip') {
     channel.onmessage = receiveClipData();
   } else {
     channel.onmessage = receiveVideoData();
   }
 
-  channel.onclose = function() {
+  channel.onclose = function () {
     console.log('Closed');
     videoBtn.disabled = true;
     scaleSlider.disabled = true;
@@ -423,12 +452,13 @@ function onDataChannelCreated(channel) {
 */
 function receiveLiveData() {
   return function onmessage(event) {
-    var remoteAudioBuffer = new Float32Array(event.data);
+    var decoded = decode(event.data);
+    var remoteAudioBuffer = new Float32Array(decoded.data);
     for (var sample = 0; sample < remoteAudioBuffer.length; sample++) {
       output1.enqueue(remoteAudioBuffer[sample]);
       output2.enqueue(remoteAudioBuffer[sample]);
     }
-    bytesReceived += remoteAudioBuffer.length*4;
+    bytesReceived += remoteAudioBuffer.length * 4;
   }
 }
 
@@ -436,9 +466,9 @@ function receiveLiveData() {
 // Receives audio clip
 */
 function receiveClipData() {
-  return function onmessage(event){
+  return function onmessage(event) {
     var data = new Uint8ClampedArray(event.data);
-    var blob = new Blob([data], { 'type' : 'audio/ogg; codecs=opus' });
+    var blob = new Blob([data], { 'type': 'audio/ogg; codecs=opus' });
     receiveAudio(blob);
   }
 }
@@ -450,13 +480,13 @@ function receiveVideoData() {
   var buf = '';
   var bufEmpty = true;
 
-  return function onmessage(event){
-    if(event.data.substring(0,6) === 'scale:') {
+  return function onmessage(event) {
+    if (event.data.substring(0, 6) === 'scale:') {
       remoteScale = parseFloat(event.data.substring(6));
     }
     else {
-      if (event.data.substring(0,5) === 'data:') {
-        if(!bufEmpty) {
+      if (event.data.substring(0, 5) === 'data:') {
+        if (!bufEmpty) {
           renderPhoto(buf);
           bufEmpty = true;
           buf = '';
@@ -466,7 +496,7 @@ function receiveVideoData() {
       buf = buf.concat(event.data);
       bufEmpty = false;
 
-      var blob = new Blob([event.data], {type: 'text/plain'});
+      var blob = new Blob([event.data], { type: 'text/plain' });
       bytesReceived += blob.size;
     }
   }
@@ -492,7 +522,7 @@ function sendData(blob) {
 }
 
 function saveAudioClip(audioblob) {
-  var clipName = prompt('Enter a name for your sound clip?','My unnamed clip');
+  var clipName = prompt('Enter a name for your sound clip?', 'My unnamed clip');
   console.log(clipName);
   var clipContainer = document.createElement('article');
   var clipLabel = document.createElement('p');
@@ -507,7 +537,7 @@ function saveAudioClip(audioblob) {
   sendButton.textContent = 'Send';
   sendButton.className = 'sendBtn'
 
-  if(clipName === null) {
+  if (clipName === null) {
     clipLabel.textContent = 'My unnamed clip';
   } else {
     clipLabel.textContent = clipName;
@@ -523,12 +553,12 @@ function saveAudioClip(audioblob) {
   var audioURL = window.URL.createObjectURL(audioblob);
   audio.src = audioURL;
 
-  deleteButton.onclick = function(e) {
+  deleteButton.onclick = function (e) {
     var evtTgt = e.target;
     evtTgt.parentNode.parentNode.removeChild(evtTgt.parentNode);
   }
 
-  sendButton.onclick = function(e) {
+  sendButton.onclick = function (e) {
     sendData(audioblob);
   }
 }
@@ -556,14 +586,14 @@ function receiveAudio(audioblob) {
   var audioURL = window.URL.createObjectURL(audioblob);
   audio.src = audioURL;
 
-  deleteButton.onclick = function(e) {
+  deleteButton.onclick = function (e) {
     var evtTgt = e.target;
     evtTgt.parentNode.parentNode.removeChild(evtTgt.parentNode);
   }
 }
 
 //Runs the code when the Peer exits the page
-window.onbeforeunload = function() {
+window.onbeforeunload = function () {
   sendMessage('bye');
   liveDataChannel.close();
   clipDataChannel.close();
@@ -580,7 +610,7 @@ function startBuffer() {
   scriptNode = audioContext.createScriptProcessor(bufferSize, 2, 2);
 
   // Listens to the audiodata
-  scriptNode.onaudioprocess = function(e) {
+  scriptNode.onaudioprocess = function (e) {
     /*
     Using audioBufferSourceNode to start Audio
 
@@ -597,13 +627,17 @@ function startBuffer() {
     // Using ScriptNodeProcessor to start audio
     */
     var input = e.inputBuffer.getChannelData(0);
-    liveDataChannel.send(input);
+    // liveDataChannel.send(input);
+    // send({ type: "audio", data: input })
+    var encoded = encode(input);
+    send({ type: "audio", data: encoded })
+    // audio({ type: "audio", data: encoded })
     bytesSent += input.length * 4;
 
-    if(output1.length() == 0){
+    if (output1.length() == 0) {
 
     }
-    else {
+    else {
       var outputBuffer1 = e.outputBuffer.getChannelData(0);
       var outputBuffer2 = e.outputBuffer.getChannelData(1);
       for (var sample = 0; sample < bufferSize; sample++) {
@@ -616,7 +650,7 @@ function startBuffer() {
 
 function changeBuffer() {
   bufferSize = document.getElementById('bufferSizeSelector').value;
-  txrxBufferSize = bufferSize*10;
+  txrxBufferSize = bufferSize * 10;
   output1 = new AudioSampleQueue(txrxBufferSize);
   output2 = new AudioSampleQueue(txrxBufferSize);
   console.log(bufferSize);
@@ -624,7 +658,7 @@ function changeBuffer() {
 
 function changeCompression(value) {
   document.getElementById("compressionNumber").innerHTML = value;
-  jpegQuality = (document.getElementById("compressionNumber").innerHTML)/100;
+  jpegQuality = (document.getElementById("compressionNumber").innerHTML) / 100;
 }
 
 // Only changes the viewed scale in the HTML
@@ -633,10 +667,11 @@ function changeScaleView(value) {
 }
 
 // Changed the scale variable in the code and sends it to the other peer
-function changeScaleInput(value) {
+function changeScaleInput(value) {
   localContext.restore();
-  scale = (document.getElementById("scaleNumber").innerHTML)/100;
-  videoDataChannel.send("scale:" + scale);
+  scale = (document.getElementById("scaleNumber").innerHTML) / 100;
+  // videoDataChannel.send("scale:" + scale);
+  send({ type: "video", "data": "scale:" + scale });
 }
 
 function changeFrameperiod(value) {
@@ -682,18 +717,21 @@ function sendImage() {
   // split the url and send in chunks of about 6,4KB
   for (var i = 0; i < n; i++) {
     var start = i * CHUNK_LEN,
-    end = (i + 1) * CHUNK_LEN;
+      end = (i + 1) * CHUNK_LEN;
     // console.log(start + ' - ' + (end - 1));
-    videoDataChannel.send(imgUrl.substring(start, end));
+    // videoDataChannel.send(imgUrl.substring(start, end));
+    send({ type: "video", "data": imgUrl.substring(start, end) });
   }
 
   // send the reminder, if any
   if (len % CHUNK_LEN) {
     // console.log('last ' + len % CHUNK_LEN + ' byte(s)');
-    videoDataChannel.send(imgUrl.substring(n * CHUNK_LEN));
+    // videoDataChannel.send(imgUrl.substring(n * CHUNK_LEN));
+
+    send({ type: "video", "data": imgUrl.substring(n * CHUNK_LEN) });
   }
 
-  var blob = new Blob([imgUrl], {type: 'text/plain'});
+  var blob = new Blob([imgUrl], { type: 'text/plain' });
   bytesSent += blob.size;
 }
 
@@ -709,7 +747,7 @@ function sendImage() {
 function renderPhoto(dataUrl) {
   var img = new Image();
   img.src = dataUrl;
-  img.onload = function() {
+  img.onload = function () {
     remoteContext.drawImage(img, 0, 0, photoContextW, photoContextH);
   }
 }
@@ -718,7 +756,7 @@ function draw() {
   localContext.drawImage(localVideo, 0, 0, localCanvas.width, localCanvas.height);
   sendImage();
 
-  stopVideoBtn.onclick = function() {
+  stopVideoBtn.onclick = function () {
     videoBtn.disabled = false;
     stopVideoBtn.disabled = true;
     scaleSlider.disabled = false;
@@ -729,9 +767,55 @@ function draw() {
 }
 
 function printBitRate() {
-  bytesReceivedTxt.innerHTML = bytesReceived*8;
-  bytesSentTxt.innerHTML = bytesSent*8;
+  bytesReceivedTxt.innerHTML = bytesReceived * 8;
+  bytesSentTxt.innerHTML = bytesSent * 8;
   bytesReceived = 0;
   bytesSent = 0;
   setTimeout(printBitRate, 1000);
+}
+
+
+// flag that will be sliped in the json string
+const FLAG_TYPED_ARRAY = "FLAG_TYPED_ARRAY";
+
+// ENCODING ***************************************
+function encode(object) {
+  var jsonStr = JSON.stringify(object, function (key, value) {
+    // the replacer function is looking for some typed arrays.
+    // If found, it replaces it by a trio
+    if (value instanceof Int8Array ||
+      value instanceof Uint8Array ||
+      value instanceof Uint8ClampedArray ||
+      value instanceof Int16Array ||
+      value instanceof Uint16Array ||
+      value instanceof Int32Array ||
+      value instanceof Uint32Array ||
+      value instanceof Float32Array ||
+      value instanceof Float64Array) {
+      var replacement = {
+        constructor: value.constructor.name,
+        data: Array.apply([], value),
+        flag: FLAG_TYPED_ARRAY
+      }
+      return replacement;
+    }
+    return value;
+  });
+  return jsonStr;
+}
+
+function decode(jsonStr) {
+  var decodedJson = JSON.parse(jsonStr, function (key, value) {
+    // the reviver function looks for the typed array flag
+    try {
+      if ("flag" in value && value.flag === FLAG_TYPED_ARRAY) {
+        // if found, we convert it back to a typed array
+        return new context[value.constructor](value.data);
+      }
+    } catch (e) { }
+
+    // if flag not found no conversion is done
+    return value;
+  });
+  return decodedJson;
 }
