@@ -114,7 +114,10 @@ if (!room) {
 
 var sender = receiveVideoData()
 var audio = receiveLiveData();
-const gun = Gun('https://gunptt.herokuapp.com/gun');
+// const gun = Gun('https://gunptt.herokuapp.com/gun');
+
+var opt = { peers: ['https://gunptt.herokuapp.com/gun'], localStorage: false, radisk: false };
+const gun = Gun(opt);
 
 gun.on("in", function (msg) {
   if (msg.type == "video") {
