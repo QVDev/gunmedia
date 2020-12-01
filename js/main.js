@@ -137,68 +137,7 @@ function send(data) {
   });
 }
 
-/*******************************************************************************
-* Signaling Server
-*******************************************************************************/
-//Connect to the signaling server
-var socket = io.connect("wss://socketio-chat-h9jt.herokuapp.com/socket.io/");
-
 getMedia();
-
-
-
-// Listens to the servers console logs
-socket.on('log', function (array) {
-  console.log.apply(console, array);
-});
-
-// The client tries to create or join a room, only if the room is not blank
-if (room !== '') {
-  socket.emit('create or join', room);
-  console.log('Attempted to create or  join room', room);
-}
-
-// Set the turn/stun server credentials the server gives us
-socket.on('credentials', function (credentials) {
-  configuration = credentials;
-})
-
-socket.on('created', function (room, clientId) {
-  console.log('Created room ' + room);
-  isInitiator = true;
-  getMedia();
-});
-
-socket.on('joined', function (room, clientId) {
-  console.log('joined ' + room);
-  isInitiator = false;
-  createPeerConnection(isInitiator, configuration);
-  getMedia();
-});
-
-socket.on('full', function (room, clientId) {
-  var newRoom = window.location.hash = prompt('Room ' + room + ' is full. Enter a new room name:');
-  socket.emit('create or join', newRoom);
-  console.log('Attempting to create a new room because room ' + room + ' is full.');
-});
-
-socket.on('ready', function () {
-  console.log('Socket is ready');
-  createPeerConnection(isInitiator, configuration);
-});
-
-socket.on('message', function (message) {
-  console.log('Client received message:', message);
-  signalingMessageCallback(message);
-});
-
-/**
-* Send message to signaling server
-*/
-function sendMessage(message) {
-  console.log('Client sending message: ', message);
-  socket.emit('message', message, room);
-}
 
 /****************************************************************************
 * User media (audio and video)
@@ -319,143 +258,6 @@ function gotStream(stream) {
   }
   // MediaRecorder ends
 
-}
-
-/****************************************************************************
-* WebRTC peer connection and data channel
-****************************************************************************/
-
-function signalingMessageCallback(message) {
-  if (message.type === 'offer') {
-    console.log('Got offer. Sending answer to peer.');
-    peerCon.setRemoteDescription(new RTCSessionDescription(message), function () { }, logError);
-    peerCon.createAnswer(onLocalSessionCreated, logError);
-
-  } else if (message.type === 'answer') {
-    console.log('Got answer');
-    peerCon.setRemoteDescription(new RTCSessionDescription(message), function () { }, logError);
-
-  } else if (message.type === 'candidate') {
-    peerCon.addIceCandidate(new RTCIceCandidate({
-      candidate: message.candidate
-    }));
-
-  } else if (message === 'bye') {
-    // BAI
-    liveDataChannel.close();
-    clipDataChannel.close();
-    videoDataChannel.close();
-    dataChannelNotification.textContent = 'The other peer has left the room!';
-    dataChannelNotification.style.color = 'red';
-    isInitiator = true;
-
-  } else if (message === 'startLive') {
-    liveAudioNotification.textContent = 'The other peer started to stream live audio';
-    liveAudioNotification.style.color = 'green';
-    notifications.appendChild(liveAudioNotification);
-
-  } else if (message === 'stopLive') {
-    liveAudioNotification.textContent = 'Live audio has stopped.';
-    liveAudioNotification.style.color = 'red';
-
-    if (audioContext.state === 'running') {
-      audioContextSource.disconnect(scriptNode);
-      scriptNode.disconnect(audioContext.destination);
-      liveBtn.disabled = false;
-      stopLiveBtn.disabled = true;
-      sendMessage('stopLive');
-      audioContext.close();
-      document.getElementById('bufferSizeSelector').disabled = false;
-    }
-  }
-}
-
-function createPeerConnection(isInitiator, config) {
-  console.log('Creating peer connection as initiator?', isInitiator, 'config', config);
-  peerCon = new RTCPeerConnection(config);
-
-  // Send any ice candidates to the other peer
-  peerCon.onicecandidate = function (event) {
-    console.log('icecandidate event: ', event);
-    if (event.candidate) {
-      sendMessage({
-        type: 'candidate',
-        label: event.candidate.sdpMLineIndex,
-        id: event.candidate.sdpMid,
-        candidate: event.candidate.candidate
-      });
-
-    } else {
-      console.log('End of candidate');
-    }
-  };
-
-  if (isInitiator) {
-    console.log('Creating Data Channel');
-    // Decide UDP or TCP
-    liveDataChannel = peerCon.createDataChannel('live', { maxRetransmits: 0, ordered: false });
-    clipDataChannel = peerCon.createDataChannel('clip');
-    videoDataChannel = peerCon.createDataChannel('video', { maxRetransmits: 0, ordered: true });
-    onDataChannelCreated(liveDataChannel);
-    onDataChannelCreated(clipDataChannel);
-    onDataChannelCreated(videoDataChannel);
-
-    console.log('Creating an offer');
-    peerCon.createOffer(onLocalSessionCreated, logError);
-
-  } else {
-    peerCon.ondatachannel = function (event) {
-      console.log('ondatachannel:', event.channel);
-      if (event.channel.label == 'live') {
-        liveDataChannel = event.channel;
-        onDataChannelCreated(liveDataChannel);
-      } else if (event.channel.label == 'clip') {
-        clipDataChannel = event.channel;
-        onDataChannelCreated(clipDataChannel);
-      } else {
-        videoDataChannel = event.channel;
-        onDataChannelCreated(videoDataChannel);
-        changeScaleInput((document.getElementById("scaleNumber").innerHTML));
-      }
-    };
-  }
-}
-
-function onLocalSessionCreated(desc) {
-  console.log('local session created: ', desc);
-  peerCon.setLocalDescription(desc, function () {
-    console.log('sending local desc: ', peerCon.localDescription);
-    sendMessage(peerCon.localDescription);
-  }, logError);
-}
-
-function onDataChannelCreated(channel) {
-  console.log('onDataChannelCreated: ', channel);
-
-  channel.onopen = function () {
-    console.log('CHANNEL opened!');
-    dataChannelNotification.textContent = 'Data channel connection established!';
-    dataChannelNotification.style.color = 'green';
-    liveBtn.disabled = false;
-    videoBtn.disabled = false;
-    scaleSlider.disabled = false;
-  };
-
-  // onmessage stores an EventHandler for whenever something is fired on the dataChannel
-  if (channel.label == 'live') {
-    channel.onmessage = receiveLiveData();
-  } else if (channel.label == 'clip') {
-    channel.onmessage = receiveClipData();
-  } else {
-    channel.onmessage = receiveVideoData();
-  }
-
-  channel.onclose = function () {
-    console.log('Closed');
-    videoBtn.disabled = true;
-    scaleSlider.disabled = true;
-    liveBtn.disabled = true;
-  }
 }
 
 /*
@@ -622,24 +424,11 @@ function startBuffer() {
 
   // Listens to the audiodata
   scriptNode.onaudioprocess = function (e) {
-    /*
-    Using audioBufferSourceNode to start Audio
-
-    var audioBuffer = audioContext.createBuffer(2, bufferSize, audioContext.sampleRate);
-    var audioBufferSourceNode = audioContext.createBufferSource();
-    audioBufferSourceNode.connect(audioContext.destination);
-    audioBuffer.copyToChannel(e.inputBuffer.getChannelData(0), 0 , 0);
-    audioBuffer.copyToChannel(e.inputBuffer.getChannelData(1), 1 , 0);
-    audioBufferSourceNode.buffer = audioBuffer;
-    audioBufferSourceNode.start();
-    */
 
     /*
     // Using ScriptNodeProcessor to start audio
     */
     var input = e.inputBuffer.getChannelData(0);
-    // liveDataChannel.send(input);
-    // send({ type: "audio", data: input })
     var encoded = encode(input);
     send({ type: "audio", data: encoded })
     // audio({ type: "audio", data: encoded })
@@ -690,33 +479,6 @@ function changeFrameperiod(value) {
   framePeriod = document.getElementById("frameperiodNumber").innerHTML;
 }
 
-// Sending image using arrays
-
-// function sendImage() {
-//   var CHUNK_LEN = 64000;
-//   var img = localContext.getImageData(0, 0, photoContextW, photoContextH);
-//   var len = img.data.byteLength;
-//   var n = len / CHUNK_LEN | 0;
-//
-//   // console.log('Sending a total of ' + len + ' byte(s)');
-//   videoDataChannel.send(len);
-//   // split the photo and send in chunks of about 64KB
-//   for (var i = 0; i < n; i++) {
-//     var start = i * CHUNK_LEN,
-//     end = (i + 1) * CHUNK_LEN;
-//     // console.log(start + ' - ' + (end - 1));
-//     videoDataChannel.send(img.data.subarray(start, end));
-//   }
-//
-//   // send the reminder, if any
-//   if (len % CHUNK_LEN) {
-//     // console.log('last ' + len % CHUNK_LEN + ' byte(s)');
-//     videoDataChannel.send(img.data.subarray(n * CHUNK_LEN));
-//   }
-//
-//   bytesSent += len;
-// }
-
 // Sending image using dataURL
 function sendImage() {
   var CHUNK_LEN = 6400;
@@ -729,30 +491,16 @@ function sendImage() {
   for (var i = 0; i < n; i++) {
     var start = i * CHUNK_LEN,
       end = (i + 1) * CHUNK_LEN;
-    // console.log(start + ' - ' + (end - 1));
-    // videoDataChannel.send(imgUrl.substring(start, end));
     send({ type: "video", "data": imgUrl.substring(start, end) });
   }
 
-  // send the reminder, if any
   if (len % CHUNK_LEN) {
-    // console.log('last ' + len % CHUNK_LEN + ' byte(s)');
-    // videoDataChannel.send(imgUrl.substring(n * CHUNK_LEN));
-
     send({ type: "video", "data": imgUrl.substring(n * CHUNK_LEN) });
   }
 
   var blob = new Blob([imgUrl], { type: 'text/plain' });
   bytesSent += blob.size;
 }
-
-// Render image using arrays
-
-// function renderPhoto(data) {
-//   var img = remoteContext.createImageData(photoContextW, photoContextH);
-//   img.data.set(data);
-//   remoteContext.putImageData(img, 0, 0);
-// }
 
 // Render image using dataURL
 function renderPhoto(dataUrl) {
