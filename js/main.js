@@ -266,7 +266,7 @@ function gotStream(stream) {
 function receiveLiveData() {
   return function onmessage(event) {
     var decoded = decode(event.data);
-    var remoteAudioBuffer = new Float32Array(decoded.data);
+    var remoteAudioBuffer = new Float32Array(decoded);
     for (var sample = 0; sample < remoteAudioBuffer.length; sample++) {
       output1.enqueue(remoteAudioBuffer[sample]);
       output2.enqueue(remoteAudioBuffer[sample]);
@@ -428,7 +428,7 @@ function startBuffer() {
     /*
     // Using ScriptNodeProcessor to start audio
     */
-    var input = e.inputBuffer.getChannelData(0);
+    var input = e.inputBuffer.getChannelData(0);    
     var encoded = encode(input);
     send({ type: "audio", data: encoded })
     // audio({ type: "audio", data: encoded })
@@ -470,7 +470,6 @@ function changeScaleView(value) {
 function changeScaleInput(value) {
   localContext.restore();
   scale = (document.getElementById("scaleNumber").innerHTML) / 100;
-  // videoDataChannel.send("scale:" + scale);
   send({ type: "video", "data": "scale:" + scale });
 }
 
@@ -550,44 +549,60 @@ function printBitRate() {
 // flag that will be sliped in the json string
 const FLAG_TYPED_ARRAY = "FLAG_TYPED_ARRAY";
 
-// ENCODING ***************************************
-function encode(object) {
-  var jsonStr = JSON.stringify(object, function (key, value) {
-    // the replacer function is looking for some typed arrays.
-    // If found, it replaces it by a trio
-    if (value instanceof Int8Array ||
-      value instanceof Uint8Array ||
-      value instanceof Uint8ClampedArray ||
-      value instanceof Int16Array ||
-      value instanceof Uint16Array ||
-      value instanceof Int32Array ||
-      value instanceof Uint32Array ||
-      value instanceof Float32Array ||
-      value instanceof Float64Array) {
-      var replacement = {
-        constructor: value.constructor.name,
-        data: Array.apply([], value),
-        flag: FLAG_TYPED_ARRAY
-      }
-      return replacement;
-    }
-    return value;
-  });
-  return jsonStr;
+// // ENCODING ***************************************
+// function encode(object) {
+//   var jsonStr = JSON.stringify(object, function (key, value) {
+//     // the replacer function is looking for some typed arrays.
+//     // If found, it replaces it by a trio
+//     if (value instanceof Float32Array) {
+//       var replacement = {
+//         constructor: value.constructor.name,
+//         data: Array.apply([], value),
+//         flag: FLAG_TYPED_ARRAY
+//       }
+//       return replacement;
+//     }
+//     return value;
+//   });
+//   return jsonStr;
+// }
+
+// function decode(jsonStr) {
+//   var decodedJson = JSON.parse(jsonStr, function (key, value) {
+//     // the reviver function looks for the typed array flag
+//     try {
+//       if ("flag" in value && value.flag === FLAG_TYPED_ARRAY) {
+//         // if found, we convert it back to a typed array
+//         return new context[value.constructor](value.data);
+//       }
+//     } catch (e) { }
+
+//     // if flag not found no conversion is done
+//     return value;
+//   });
+//   return decodedJson;
+// }
+
+function encode(fary) {
+  // ENCODING TEST
+  let uint = new Uint8Array(fary.buffer);
+  let str = btoa(String.fromCharCode.apply(null, uint)); //btoa( String.fromCharCode( ...uint ) );
+  return str;
+
 }
 
-function decode(jsonStr) {
-  var decodedJson = JSON.parse(jsonStr, function (key, value) {
-    // the reviver function looks for the typed array flag
-    try {
-      if ("flag" in value && value.flag === FLAG_TYPED_ARRAY) {
-        // if found, we convert it back to a typed array
-        return new context[value.constructor](value.data);
-      }
-    } catch (e) { }
+function decode(str) {
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    // if flag not found no conversion is done
-    return value;
-  });
-  return decodedJson;
+  //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  // DECODE TEST
+  let blob = atob(str);
+
+  let ary_buf = new ArrayBuffer(blob.length);
+  let dv = new DataView(ary_buf);
+  for (let i = 0; i < blob.length; i++) dv.setUint8(i, blob.charCodeAt(i));
+  return ary_buf;
 }
+
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+// For WebGL Buffers, can skip Float32Array, just return ArrayBuffer is all thats needed.
