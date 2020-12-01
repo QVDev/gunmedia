@@ -208,7 +208,7 @@ function getMedia() {
   console.log('Getting user media (audio) ...');
   navigator.mediaDevices.getUserMedia({
     audio: true,
-    video: { width: 480, height: 320, frameRate: { ideal: 30, max: 60 } }
+    video: { width: 480, height: 320, frameRate: { ideal: 24, max: 30 } }
   })
     .then(gotStream)
     .catch(function (e) {
@@ -249,7 +249,15 @@ function gotStream(stream) {
     localCanvas.height = photoContextH * scale;
     scaleSlider.disabled = true;
     // Using photo-data from the video stream to create a matching photocontext
-    draw();
+    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+      // The API is supported!
+      console.info("using request video frame callback")
+      localVideo.requestVideoFrameCallback(updateVideo)
+      localVideo.play();
+    } else {
+      draw();
+    }
+
   }
   // Live video code ends
 
@@ -763,10 +771,23 @@ function draw() {
     videoBtn.disabled = false;
     stopVideoBtn.disabled = true;
     scaleSlider.disabled = false;
-    clearTimeout(keepSending);
-  }
 
-  var keepSending = setTimeout(draw, framePeriod);
+    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+      localVideo.pause();
+    } else {
+      clearTimeout(keepSending);
+    }
+  }
+  if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+
+  } else {
+    var keepSending = setTimeout(draw, framePeriod);
+  }
+}
+
+function updateVideo(now, metadata) {
+  localVideo.requestVideoFrameCallback(updateVideo)
+  draw();
 }
 
 function printBitRate() {
