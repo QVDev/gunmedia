@@ -309,8 +309,7 @@ function receiveVideoData() {
       buf = buf.concat(event.data);
       bufEmpty = false;
 
-      var blob = new Blob([event.data], { type: 'text/plain' });
-      bytesReceived += blob.size;
+      bytesReceived += event.data.length;
     }
   }
 }
@@ -482,6 +481,7 @@ function changeFrameperiod(value) {
 function sendImage() {
   var CHUNK_LEN = 6400;
   var imgUrl = localCanvas.toDataURL('image/jpeg', jpegQuality);
+
   var len = imgUrl.length;
   var n = len / CHUNK_LEN | 0;
 
@@ -497,8 +497,8 @@ function sendImage() {
     send({ type: "video", "data": imgUrl.substring(n * CHUNK_LEN) });
   }
 
-  var blob = new Blob([imgUrl], { type: 'text/plain' });
-  bytesSent += blob.size;
+  bytesSent += len;
+  console.log("sent:" + len);
 }
 
 // Render image using dataURL
