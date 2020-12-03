@@ -53,6 +53,7 @@ var localStream;
 var localAudio = document.querySelector('#localAudio');
 var remoteAudio = document.querySelector('#remoteAudio');
 var localVideo = document.querySelector('#localVideo');
+var remoteVideo = document.querySelector('#remoteVideo');
 var videoBtn = document.querySelector('#videoBtn');
 var stopVideoBtn = document.querySelector('#stopVideoBtn');
 var liveBtn = document.querySelector('#liveBtn');
@@ -103,6 +104,9 @@ var audioContext;
 var audioContextSource;
 var scriptNode;
 
+var speech = new Speech();
+var talk;
+
 // isInitiator is the one who's creating the room
 var isInitiator;
 
@@ -124,6 +128,11 @@ gun.on("in", function (msg) {
     sender(msg);
   } else if (msg.type == "audio") {
     audio(msg)
+  } else if (msg.type == "caption") {
+    SETCLUE(msg.data, "remoteVideo", 1);
+    if (msg.isFinal && talk !== undefined) {
+      talk.say(msg.data);
+    }
   }
 })
 
@@ -133,7 +142,8 @@ function send(data) {
   // data.room = self.room;
   gun.on("out", {
     type: data.type,
-    data: data.data
+    data: data.data,
+    isFinal: data.isFinal
   });
 }
 
@@ -168,6 +178,7 @@ function gotStream(stream) {
   // Live video starts
   // var streamURL = window.URL.createObjectURL(stream);
   localVideo.srcObject = stream;
+  remoteVideo.srcObject = remoteCanvas.captureStream();
 
   localVideo.onloadedmetadata = function () {
     localCanvas.width = photoContextW = localVideo.videoWidth;
@@ -197,8 +208,25 @@ function gotStream(stream) {
       draw();
     }
 
+    initSpeech();
+
   }
   // Live video code ends
+
+  function initSpeech() {
+    speech.recognition.onstart = function () {
+      console.log('Listening started...');
+    }
+
+    speech.recognition.onend = function () {
+      console.log('Listening stopped.');
+      speech.startCapture();
+    }
+
+
+    speech.startCapture();
+
+  }
 
   // Live audio starts
   printBitRate();
@@ -235,14 +263,18 @@ function gotStream(stream) {
     recordBtn.disabled = true;
     stopBtn.disabled = false;
 
-    mediaRecorder.start();
-    console.log(mediaRecorder.state);
+    // mediaRecorder.start();
+    // console.log(mediaRecorder.state);
+    if (talk == undefined) {
+      talk = new Talk();
+    }
   }
 
   stopBtn.onclick = function () {
     recordBtn.disabled = false;
     stopBtn.disabled = true;
-    mediaRecorder.stop();
+    // mediaRecorder.stop();
+    talk = undefined;
   }
 
   mediaRecorder.onstop = function (e) {
@@ -427,7 +459,7 @@ function startBuffer() {
     /*
     // Using ScriptNodeProcessor to start audio
     */
-    var input = e.inputBuffer.getChannelData(0);    
+    var input = e.inputBuffer.getChannelData(0);
     var encoded = encode(input);
     send({ type: "audio", data: encoded })
     // audio({ type: "audio", data: encoded })
@@ -498,7 +530,6 @@ function sendImage() {
   }
 
   bytesSent += len;
-  console.log("sent:" + len);
 }
 
 // Render image using dataURL
@@ -518,6 +549,7 @@ function draw() {
     videoBtn.disabled = false;
     stopVideoBtn.disabled = true;
     scaleSlider.disabled = false;
+    speech.stopCapture();
 
     if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
       localVideo.pause();

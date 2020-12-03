@@ -5,6 +5,9 @@
   <title>WebRTC Audio</title>
   <link href="styles/main.css" rel="stylesheet" type="text/css">
   <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
+  <script src="./js/captions.js"></script>
+  <script src="./js/speechRecognition.js"></script>
+  <script src="./js/speechSynthesis.js"></script>
 </head>
 
 <body>
@@ -31,8 +34,8 @@
         <button id="stopLiveBtn" class="btn" disabled> Stop live audio </button>
       </div>
       <div class="buttonSet">
-        <button id="recordBtn" class="btn" disabled> Record </button>
-        <button id="stopBtn" class="btn" disabled> Stop </button>
+        <button id="recordBtn" class="btn" disabled> Enable Speech </button>
+        <button id="stopBtn" class="btn" disabled> Disable Speech </button>
       </div>
     </div>
 
@@ -74,7 +77,8 @@
     <div id="videoContainer">
       <video id="localVideo" autoplay muted></video>
       <canvas id="localCanvas"></canvas>
-      <canvas id="remoteCanvas"></canvas>
+      <canvas id="remoteCanvas" hidden></canvas>
+      <video id="remoteVideo" autoplay muted controls></video>
     </div>
 
     <div id="bitRate">
