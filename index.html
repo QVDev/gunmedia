@@ -15,11 +15,6 @@
   <div id="grid">
     <div id="header">
 
-      <h1> Send <s>audio and</s> video using only the Gun </h1>
-
-      <div id="notifications">
-        <p id="dataChannelNotification" class="notifications"> Data Channel not yet created. Waiting for other peer. </p>
-      </div>
     </div>
 
     <div id="buttons">
@@ -57,19 +52,22 @@
 
       <div id="compressionContainer">
         <p> Input the jpeg compression quality (Higher is better): </p>
-        <input id="compressionSlider" class="slider" type="range" min="1" max="100" value="50" oninput="changeCompression(this.value)"/>
+        <input id="compressionSlider" class="slider" type="range" min="1" max="100" value="50"
+          oninput="changeCompression(this.value)" />
         <span id="compressionNumber"> 50 </span>
       </div>
 
       <div id="scaleContainer">
         <p> Input the scale quality (Higher is better): </p>
-        <input id="scaleSlider" class="slider" type="range" min="1" max="100" value="30" oninput="changeScaleView(this.value)" onchange="changeScaleInput(this.value)" />
+        <input id="scaleSlider" class="slider" type="range" min="1" max="100" value="30"
+          oninput="changeScaleView(this.value)" onchange="changeScaleInput(this.value)" />
         <span id="scaleNumber">30</span>
       </div>
 
       <div id="frameperiodContainer">
         <p> Input the frame period: </p>
-        <input id="frameperiodSlider" class="slider" type="range" min="1" max="500" value="30" oninput="changeFrameperiod(this.value)"/>
+        <input id="frameperiodSlider" class="slider" type="range" min="1" max="500" value="30"
+          oninput="changeFrameperiod(this.value)" />
         <span id="frameperiodNumber">30</span>
       </div>
     </div>
@@ -77,8 +75,6 @@
     <div id="videoContainer">
       <video id="localVideo" autoplay muted></video>
       <canvas id="localCanvas"></canvas>
-      <canvas id="remoteCanvas" hidden></canvas>
-      <video id="remoteVideo" autoplay muted controls></video>
     </div>
 
     <div id="bitRate">
@@ -92,18 +88,8 @@
       </div>
     </div>
 
-    <div id="clipsContainer">
-      <section class="local-clips">
-        <h2> Local Clips: </h2>
-      </section>
-
-      <section class="remote-clips">
-        <h2> Remote Clips: </h2>
-      </section>
-    </div>
-
     <div id="footer">
-      
+
     </div>
   </div>
 

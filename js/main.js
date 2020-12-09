@@ -53,7 +53,6 @@ var localStream;
 var localAudio = document.querySelector('#localAudio');
 var remoteAudio = document.querySelector('#remoteAudio');
 var localVideo = document.querySelector('#localVideo');
-var remoteVideo = document.querySelector('#remoteVideo');
 var videoBtn = document.querySelector('#videoBtn');
 var stopVideoBtn = document.querySelector('#stopVideoBtn');
 var liveBtn = document.querySelector('#liveBtn');
@@ -61,21 +60,14 @@ var stopLiveBtn = document.querySelector('#stopLiveBtn');
 var recordBtn = document.getElementById('recordBtn');
 var stopBtn = document.getElementById('stopBtn');
 var compressionSlider = document.getElementById('compressionSlider');
-var localClips = document.querySelector('.local-clips');
-var remoteClips = document.querySelector('.remote-clips');
-var notifications = document.querySelector('#notifications');
 var bytesSentTxt = document.querySelector('#bytesSent');
 var bytesReceivedTxt = document.querySelector('#bytesReceived');
 var liveAudio = document.querySelector('#liveAudio');
-var dataChannelNotification = document.getElementById('dataChannelNotification');
-var liveAudioNotification = document.createElement('p');
-liveAudioNotification.className = "notifications";
 
 // Photo context variables for video grab data
 // remoteCanvas is a canvas with continously an updated photo-context to make a video
 var remoteCanvas = document.getElementById('remoteCanvas');
 var localCanvas = document.getElementById('localCanvas');
-var remoteContext = remoteCanvas.getContext('2d');
 var localContext = localCanvas.getContext('2d');
 var photoContextW;
 var photoContextH;
@@ -124,6 +116,12 @@ var opt = { peers: ['https://gunptt.herokuapp.com/gun'], localStorage: false, ra
 const gun = Gun(opt);
 
 gun.on("in", function (msg) {
+  if (msg.id == gun._.opt.pid) {
+    return
+  }
+
+  getRemoteVideo(msg.id);
+
   if (msg.type == "video") {
     sender(msg);
   } else if (msg.type == "audio") {
@@ -133,8 +131,33 @@ gun.on("in", function (msg) {
     if (msg.isFinal && talk !== undefined) {
       talk.say(msg.data);
     }
+  } else if (msg.type = "msg") {
+    console.log(msg);
+    if (msg.data == "bye") {
+      removeRemoteVideo(msg.id)
+    }
   }
 })
+
+function removeRemoteVideo(id) {
+  var remoteCanvas = document.getElementById(`${id}-canvas`)
+  if (remoteCanvas !== undefined) {
+    remoteCanvas.parentNode.removeChild(remoteCanvas);
+  }
+}
+
+function getRemoteVideo(id) {
+  var remoteCanvas = document.getElementById(`${id}-canvas`)
+  if (remoteCanvas == undefined) {
+    remoteCanvas = document.createElement('canvas');
+    remoteCanvas.id = `${id}-canvas`;
+    remoteCanvas.width = 480;
+    remoteCanvas.height = 320;
+
+    var videoContainer = document.getElementById("videoContainer");
+    videoContainer.appendChild(remoteCanvas);
+  }
+}
 
 function send(data) {
   // data.socketId = self.socketId;
@@ -143,7 +166,8 @@ function send(data) {
   gun.on("out", {
     type: data.type,
     data: data.data,
-    isFinal: data.isFinal
+    isFinal: data.isFinal,
+    id: gun._.opt.pid
   });
 }
 
@@ -161,7 +185,7 @@ function getMedia() {
   })
     .then(gotStream)
     .catch(function (e) {
-      alert('Error: ' + e.name);
+      alert('Error: ' + e);
     });
 }
 
@@ -178,14 +202,12 @@ function gotStream(stream) {
   // Live video starts
   // var streamURL = window.URL.createObjectURL(stream);
   localVideo.srcObject = stream;
-  remoteVideo.srcObject = remoteCanvas.captureStream();
+
 
   localVideo.onloadedmetadata = function () {
     localCanvas.width = photoContextW = localVideo.videoWidth;
     localCanvas.height = photoContextH = localVideo.videoHeight;
-    remoteCanvas.width = photoContextW;
-    remoteCanvas.height = photoContextH;
-    console.log('gotStream with with and height:', photoContextW, photoContextH);
+    console.log('gotStream with witdh and height:', photoContextW, photoContextH);
     liveBtn.disabled = false;
     videoBtn.disabled = false;
     scaleSlider.disabled = false;
@@ -237,7 +259,7 @@ function gotStream(stream) {
     startBuffer();
     audioContextSource.connect(scriptNode);
     scriptNode.connect(audioContext.destination);
-    sendMessage('startLive');
+    send({ type: "msg", data: 'startLive' })
   }
 
   stopLiveBtn.onclick = function () {
@@ -245,7 +267,7 @@ function gotStream(stream) {
     scriptNode.disconnect(audioContext.destination);
     liveBtn.disabled = false;
     stopLiveBtn.disabled = true;
-    sendMessage('stopLive');
+    send({ type: "msg", data: 'stopLive' })
     audioContext.close();
     document.getElementById('bufferSizeSelector').disabled = false;
   }
@@ -307,16 +329,6 @@ function receiveLiveData() {
   }
 }
 
-/*
-// Receives audio clip
-*/
-function receiveClipData() {
-  return function onmessage(event) {
-    var data = new Uint8ClampedArray(event.data);
-    var blob = new Blob([data], { 'type': 'audio/ogg; codecs=opus' });
-    receiveAudio(blob);
-  }
-}
 
 /*
 // Receives video stream (images)
@@ -332,7 +344,7 @@ function receiveVideoData() {
     else {
       if (event.data.substring(0, 5) === 'data:') {
         if (!bufEmpty) {
-          renderPhoto(buf);
+          renderPhoto(buf, event.id);
           bufEmpty = true;
           buf = '';
         }
@@ -350,95 +362,10 @@ function receiveVideoData() {
 * UI-related functions and ETC
 ****************************************************************************/
 
-// dataChannel.send(data), data gets received by using event.data
-// Sending a blob through RTCPeerConnection is not supported. Must use an ArrayBuffer?
-function sendData(blob) {
-  var fileReader = new FileReader();
-  var arrayBuffer;
-
-  fileReader.onloadend = () => {
-    arrayBuffer = fileReader.result;
-    console.log(arrayBuffer);
-    clipDataChannel.send(arrayBuffer);
-  }
-
-  fileReader.readAsArrayBuffer(blob);
-}
-
-function saveAudioClip(audioblob) {
-  var clipName = prompt('Enter a name for your sound clip?', 'My unnamed clip');
-  console.log(clipName);
-  var clipContainer = document.createElement('article');
-  var clipLabel = document.createElement('p');
-  var audio = document.createElement('audio');
-  var deleteButton = document.createElement('button');
-  var sendButton = document.createElement('button');
-
-  clipContainer.classList.add('clip');
-  audio.setAttribute('controls', '');
-  deleteButton.textContent = 'Delete';
-  deleteButton.className = 'deleteBtn';
-  sendButton.textContent = 'Send';
-  sendButton.className = 'sendBtn'
-
-  if (clipName === null) {
-    clipLabel.textContent = 'My unnamed clip';
-  } else {
-    clipLabel.textContent = clipName;
-  }
-
-  clipContainer.appendChild(audio);
-  clipContainer.appendChild(clipLabel);
-  clipContainer.appendChild(deleteButton);
-  clipContainer.appendChild(sendButton);
-  localClips.appendChild(clipContainer);
-
-  audio.controls = true;
-  var audioURL = window.URL.createObjectURL(audioblob);
-  audio.src = audioURL;
-
-  deleteButton.onclick = function (e) {
-    var evtTgt = e.target;
-    evtTgt.parentNode.parentNode.removeChild(evtTgt.parentNode);
-  }
-
-  sendButton.onclick = function (e) {
-    sendData(audioblob);
-  }
-}
-
-function receiveAudio(audioblob) {
-  var clipContainer = document.createElement('article');
-  var clipLabel = document.createElement('p');
-  var audio = document.createElement('audio');
-  var deleteButton = document.createElement('button');
-  var clipName = remoteClips.children.length;
-
-  clipContainer.classList.add('clip');
-  audio.setAttribute('controls', '');
-  deleteButton.textContent = 'Delete';
-  deleteButton.className = 'deleteBtn';
-
-  clipLabel.textContent = "Clip: " + clipName;
-
-  clipContainer.appendChild(audio);
-  clipContainer.appendChild(clipLabel);
-  clipContainer.appendChild(deleteButton);
-  remoteClips.appendChild(clipContainer);
-
-  audio.controls = true;
-  var audioURL = window.URL.createObjectURL(audioblob);
-  audio.src = audioURL;
-
-  deleteButton.onclick = function (e) {
-    var evtTgt = e.target;
-    evtTgt.parentNode.parentNode.removeChild(evtTgt.parentNode);
-  }
-}
 
 //Runs the code when the Peer exits the page
 window.onbeforeunload = function () {
-  sendMessage('bye');
+  send({ type: "msg", data: 'bye' })
   liveDataChannel.close();
   clipDataChannel.close();
   videoDataChannel.close();
@@ -533,10 +460,11 @@ function sendImage() {
 }
 
 // Render image using dataURL
-function renderPhoto(dataUrl) {
+function renderPhoto(dataUrl, id) {
   var img = new Image();
   img.src = dataUrl;
   img.onload = function () {
+    var remoteContext = document.getElementById(`${id}-canvas`).getContext('2d');
     remoteContext.drawImage(img, 0, 0, photoContextW, photoContextH);
   }
 }
