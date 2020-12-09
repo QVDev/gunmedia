@@ -512,7 +512,7 @@ function changeFrameperiod(value) {
 // Sending image using dataURL
 function sendImage() {
   var CHUNK_LEN = 6400;
-  var imgUrl = localCanvas.toDataURL('image/jpeg', jpegQuality);
+  var imgUrl = localCanvas.toDataURL('image/webp', jpegQuality);
 
   var len = imgUrl.length;
   var n = len / CHUNK_LEN | 0;
