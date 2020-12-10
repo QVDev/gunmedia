@@ -24,6 +24,7 @@ var remoteScale;
 
 var speech = new Speech();
 var talk;
+var isLive = false;
 
 var sender = receiveVideoData()
 
@@ -123,23 +124,37 @@ function gotStream(stream) {
   };
 
   localContext.save();
-  videoBtn.onclick = function () {
-    videoBtn.innerText = "STOP";
-    localContext.scale(scale, scale);
-    localCanvas.width = photoContextW * scale;
-    localCanvas.height = photoContextH * scale;
+  videoBtn.onclick = videoOnClick;
 
-    // Using photo-data from the video stream to create a matching photocontext
-    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-      console.info("using request video frame callback")
-      localVideo.requestVideoFrameCallback(updateVideo)
-      localVideo.play();
+  function videoOnClick() {
+    if (isLive) {
+      isLive = false;
+      videoBtn.innerText = "GO LIVE";
+      speech.stopCapture();
+
+      if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+        localVideo.pause();
+      } else {
+        clearTimeout(keepSending);
+      }
     } else {
-      draw();
+      isLive = true;
+      videoBtn.innerText = "STOP";
+      localContext.scale(scale, scale);
+      localCanvas.width = photoContextW * scale;
+      localCanvas.height = photoContextH * scale;
+
+      // Using photo-data from the video stream to create a matching photocontext
+      if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+        console.info("using request video frame callback")
+        localVideo.requestVideoFrameCallback(updateVideo)
+        localVideo.play();
+      } else {
+        draw();
+      }
+      initSpeech();
     }
-    initSpeech();
   }
-  // Live video code ends
 
   function initSpeech() {
     speech.recognition.onstart = function () {
@@ -148,7 +163,6 @@ function gotStream(stream) {
 
     speech.recognition.onend = function () {
       console.log('Listening stopped.');
-      // speech.startCapture();
     }
     speech.startCapture();
   }
@@ -234,16 +248,6 @@ function draw() {
   localContext.drawImage(localVideo, 0, 0, localCanvas.width, localCanvas.height);
   sendImage();
 
-  videoBtn.onclick = function () {
-    videoBtn.innerText = "GO LIVE";
-    speech.stopCapture();
-
-    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-      localVideo.pause();
-    } else {
-      clearTimeout(keepSending);
-    }
-  }
   if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
 
   } else {
