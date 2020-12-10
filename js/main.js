@@ -208,7 +208,11 @@ function gotStream(stream) {
     }
 
     speech.recognition.onend = function () {
-      console.log('Listening stopped.');
+      if (isLive) {
+        speech.startCapture();
+      } else {
+        console.log('Listening stopped.');
+      }
     }
     speech.startCapture();
   }
