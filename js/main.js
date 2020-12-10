@@ -36,7 +36,7 @@ gun.on("in", function (msg) {
     return
   }
 
-  getRemoteVideo(msg.id);
+  addToStreamers(msg.id);
 
   if (msg.type == "video") {
     sender(msg);
@@ -50,10 +50,56 @@ gun.on("in", function (msg) {
   } else if (msg.type = "msg") {
     console.log(msg);
     if (msg.data == "bye") {
-      removeRemoteVideo(msg.id)
+      removeStreamer(msg.id);
     }
   }
 })
+
+function addToStreamers(id) {
+  var remoteRow = document.getElementById(`${id}-row`)
+  if (remoteRow != null || remoteRow != undefined) {
+    // console.log("Already added");
+    return;
+  }
+  var row = document.createElement('tr');
+  row.id = `${id}-row`;
+  row.onclick = function () {
+    console.log("Add canvas");
+  }
+  row.className = "hover:bg-indigo-50"
+  row.style = "cursor: pointer;"
+  const html = `
+              <td class="px-6 py-4 whitespace-nowrap">
+                <div class="flex items-center">
+                  <div class="flex-shrink-0 h-10 w-10">
+                    <img class="h-10 w-10 rounded-full"
+                      src="https://ui-avatars.com/api/?name=${id}"
+                      alt="">
+                  </div>
+                  <div class="ml-4">
+                    <div class="text-sm font-medium text-gray-900">
+                    ${id}
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-6 py-4 whitespace-nowrap">
+                <span
+                  class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                  Active
+                </span>
+              </td>`
+  row.innerHTML = html;
+  var table = document.getElementById("streamers");
+  table.appendChild(row);
+}
+
+function removeStreamer(id) {
+  var remoteRow = document.getElementById(`${id}-row`)
+  if (remoteRow !== undefined && remoteRow != null) {
+    remoteRow.parentNode.removeChild(remoteRow);
+  }
+}
 
 function removeRemoteVideo(id) {
   var remoteCanvas = document.getElementById(`${id}-canvas`)
@@ -177,6 +223,11 @@ function receiveVideoData() {
   var bufEmpty = true;
 
   return function onmessage(event) {
+    var remoteCanvas = document.getElementById(`${event.id}-canvas`);
+    if (remoteCanvas == null || remoteCanvas == undefined) {
+      // console.log("Have to add canvas");
+      return;
+    }
     if (event.data.substring(0, 6) === 'scale:') {
       remoteScale = parseFloat(event.data.substring(6));
     }
@@ -261,8 +312,8 @@ function updateVideo(now, metadata) {
 }
 
 function printBitRate() {
-  bytesReceivedTxt.innerHTML = bytesReceived * 8;
-  bytesSentTxt.innerHTML = bytesSent * 8;
+  bytesReceivedTxt.innerHTML = `Bitrate Received:${bytesReceived * 8}`;
+  bytesSentTxt.innerHTML = `Bitrate sent:${bytesSent * 8}`;
   bytesReceived = 0;
   bytesSent = 0;
   setTimeout(printBitRate, 1000);
