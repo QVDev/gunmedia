@@ -2,8 +2,9 @@
 <html>
 
 <head>
-  <title>WebRTC Audio</title>
-  <link href="styles/main.css" rel="stylesheet" type="text/css">
+  <title>Live caption video</title>
+  <link href="https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css" rel="stylesheet">
+  <!-- <link href="styles/main.css" rel="stylesheet" type="text/css"> -->
   <script src="https://cdn.jsdelivr.net/npm/gun/gun.js"></script>
   <script src="./js/captions.js"></script>
   <script src="./js/speechRecognition.js"></script>
@@ -12,81 +13,56 @@
 
 <body>
 
+  <!-- This example requires Tailwind CSS v2.0+ -->
+  <div class="bg-gray-50">
+    <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
+      <h2 class="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+        <span class="block">Ready to go live?</span>
+        <span class="block text-indigo-600">Start streaming now.</span>
+      </h2>
+      <div class="mt-8 lex lg:mt-0 lg:flex-shrink-0">
+        <div class="inline-flex rounded-md shadow">
+          <button type="button" id="videoBtn"
+            class="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
+            GO LIVE
+          </button>
+        </div>
+        <div class="ml-3 inline-flex rounded-md shadow">
+          <a href="#"
+            class="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50">
+            Learn more
+          </a>
+        </div>
+        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+          <div class="px-4 py-5 sm:px-6">
+            <h3 class="text-lg leading-6 font-medium text-gray-900">
+              Your local video
+            </h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500" id="videoContainer">
+              <video id="localVideo" autoplay muted></video>
+              <canvas id="localCanvas" style="position: inherit; display: none"></canvas>
+            <div id="bitRateSent">
+              <p> Bitrate sent: </p>
+              <p id="bytesSent"> </p>
+            </div>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="grid">
     <div id="header">
-
     </div>
 
-    <div id="buttons">
-      <h3> Audio and video controls: </h3>
-      <br />
-      <div class="buttonSet">
-        <button id="videoBtn" class="btn" disabled> Send live video</button>
-        <button id="stopVideoBtn" class="btn" disabled=""> Stop live video </button>
-      </div>
-      <div class="buttonSet">
-        <button id="liveBtn" class="btn" disabled> Send live audio </button>
-        <button id="stopLiveBtn" class="btn" disabled> Stop live audio </button>
-      </div>
-      <div class="buttonSet">
-        <button id="recordBtn" class="btn" disabled> Enable Speech </button>
-        <button id="stopBtn" class="btn" disabled> Disable Speech </button>
-      </div>
+
+
+    <div id="bitRateReceived">
+      <p> Bitrate Received: </p>
+      <p id="bytesReceived"> </p>
     </div>
 
-    <div id="selectors">
-      <h3> Adjust your quality settings: </h3>
-
-      <div id="bufferSelector">
-        <p> Select the desired audio buffer size: </p>
-        <select id="bufferSizeSelector" onchange="changeBuffer()">
-          <option value="256"> 256 </option>
-          <option value="512"> 512 </option>
-          <option value="1024"> 1024 </option>
-          <option value="2048"> 2048 </option>
-          <option value="4096"> 4096 </option>
-          <option value="8192"> 8192 </option>
-          <option value="16384"> 16384 </option>
-        </select>
-      </div>
-
-      <div id="compressionContainer">
-        <p> Input the jpeg compression quality (Higher is better): </p>
-        <input id="compressionSlider" class="slider" type="range" min="1" max="100" value="50"
-          oninput="changeCompression(this.value)" />
-        <span id="compressionNumber"> 50 </span>
-      </div>
-
-      <div id="scaleContainer">
-        <p> Input the scale quality (Higher is better): </p>
-        <input id="scaleSlider" class="slider" type="range" min="1" max="100" value="30"
-          oninput="changeScaleView(this.value)" onchange="changeScaleInput(this.value)" />
-        <span id="scaleNumber">30</span>
-      </div>
-
-      <div id="frameperiodContainer">
-        <p> Input the frame period: </p>
-        <input id="frameperiodSlider" class="slider" type="range" min="1" max="500" value="30"
-          oninput="changeFrameperiod(this.value)" />
-        <span id="frameperiodNumber">30</span>
-      </div>
-    </div>
-
-    <div id="videoContainer">
-      <video id="localVideo" autoplay muted></video>
-      <canvas id="localCanvas"></canvas>
-    </div>
-
-    <div id="bitRate">
-      <div id="bitRateSent">
-        <p> Bitrate sent: </p>
-        <p id="bytesSent"> </p>
-      </div>
-      <div id="bitRateReceived">
-        <p> Bitrate Received: </p>
-        <p id="bytesReceived"> </p>
-      </div>
-    </div>
 
     <div id="footer">
 
