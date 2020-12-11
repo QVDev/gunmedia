@@ -19,72 +19,92 @@
         <span class="block">Ready to go live?</span>
         <span class="block text-indigo-600">Start streaming now.</span>
       </h2>
-      <div class="mt-8 lex lg:mt-0 lg:flex-shrink-0">
-        <div class="inline-flex rounded-md shadow">
-          <button type="button" id="videoBtn"
-            class="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
-            GO LIVE
-          </button>
-        </div>
-        <div class="ml-3 inline-flex rounded-md shadow">
-          <a href="#"
-            class="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-indigo-600 bg-white hover:bg-indigo-50">
-            Learn more
-          </a>
-        </div>
-        <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-          <div class="px-4 py-5 sm:px-6">
-            <h3 class="text-lg leading-6 font-medium text-gray-900">
-              Your local video
-            </h3>
-            <p class="mt-1 max-w-2xl text-sm text-gray-500" id="videoContainer">
-              <video id="localVideo" autoplay muted></video>
-              <canvas id="localCanvas" style="position: inherit; display: none"></canvas>
-            <div id="bitRateSent">
-              <p id="bytesSent"> Bitrate sent: </p>
-            </div>
-            <div id="bitRateReceived">
-              <p id="bytesReceived"> Bitrate Received: </p>
-            </div>
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
-    <div class="bg-gray-50 shadow overflow-hidden sm:rounded-lg">
+    <!-- LOCAL VIDEO -->
+    <div
+      class="bg-white shadow overflow-hidden sm:rounded-lg max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
+      <div class="inline-flex rounded-md shadow">
+        <button type="button" id="videoBtn"
+          class="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
+          GO LIVE
+        </button>
+      </div>
       <div class="px-4 py-5 sm:px-6">
         <h3 class="text-lg leading-6 font-medium text-gray-900">
-          Current streamers
+          Your local video
         </h3>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500" id="videoContainer">
-        <div class="flex flex-col">
-          <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
-            <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
-              <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
-                <table class="min-w-full divide-y divide-gray-200">
-                  <thead class="bg-gray-50">
-                    <tr>
-                      <th scope="col"
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Name
-                      </th>
-                      <th scope="col"
-                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody id="streamers" class="bg-white divide-y divide-gray-200">
-                    <!-- Dynamicaly added -->
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
+        <p class="mt-1 max-w-2xl text-sm text-gray-500">
+          <video id="localVideo" autoplay muted></video>
+          <canvas id="localCanvas" style="position: inherit; display: none"></canvas>
+        <div id="bitRateSent">
+          <p id="bytesSent"> Bitrate sent: </p>
         </div>
         </p>
       </div>
     </div>
+    <!-- REMOTE VIDEO -->
+    <BR>
+    <BR>
+    <div
+      class="bg-white shadow overflow-hidden sm:rounded-lg max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:py-16 lg:px-8 lg:flex lg:items-center lg:justify-between">
+      <div class="inline-flex rounded-md shadow">
+        <button type="button" id="randomBtn"
+          class="inline-flex items-center justify-center px-5 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+          Play random stream
+        </button>
+      </div>
+      <div class="px-4 py-5 sm:px-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">
+          Remote video
+        </h3>
+        <p class="mt-1 max-w-2xl text-sm text-gray-500" id="remoteVideos">
+          <video id="remoteVideo" autoplay muted controls width="480" height="320"></video>
+          <canvas id="remoteCanvas" style="position: inherit; display: none"></canvas>
+        <div id="peerCount">
+          <p id="peersConnected"> Peers connected: 0</p>
+        </div>
+        <div id="bitRateReceived">
+          <p id="bytesReceived"> Bitrate Received: </p>
+        </div>
+        </p>
+      </div>
+    </div>
+  </div>
+  <!-- </div> -->
+  <div class="bg-gray-50 shadow overflow-hidden sm:rounded-lg">
+    <div class="px-4 py-5 sm:px-6">
+      <h3 class="text-lg leading-6 font-medium text-gray-900">
+        Current streamers
+      </h3>
+      <p class="mt-1 max-w-2xl text-sm text-gray-500">
+      <div class="flex flex-col">
+        <div class="-my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+          <div class="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
+            <div class="shadow overflow-hidden border-b border-gray-200 sm:rounded-lg">
+              <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th scope="col"
+                      class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody id="streamers" class="bg-white divide-y divide-gray-200">
+                  <!-- Dynamicaly added -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+      </p>
+    </div>
+  </div>
   </div>
 
   <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>

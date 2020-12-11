@@ -7,8 +7,23 @@ var localStream;
 var localAudio = document.querySelector('#localAudio');
 var localVideo = document.querySelector('#localVideo');
 var videoBtn = document.querySelector('#videoBtn');
+var randomBtn = document.querySelector('#randomBtn');
+randomBtn.onclick = function () {
+  var table = document.getElementById("streamers");
+  if (table.rows.length > 0) {
+    getRemoteVideo(document.getElementById("streamers").rows[0].cells[0].innerText)
+    randomBtn.innerText = "Play random stream"
+  } else {
+    randomBtn.innerText = "no streams available"
+  }
+}
+
 var bytesSentTxt = document.querySelector('#bytesSent');
 var bytesReceivedTxt = document.querySelector('#bytesReceived');
+var peersConnectedTxt = document.querySelector('#peersConnected');
+
+var remoteCanvas = document.getElementById(`remoteCanvas`)
+var remoteVideo = document.getElementById(`remoteVideo`)
 
 // Photo context variables for video grab data
 var localCanvas = document.getElementById('localCanvas');
@@ -25,7 +40,7 @@ var remoteScale;
 var speech = new Speech();
 var talk;
 var isLive = false;
-
+var selectedRemote = -1;
 var sender = receiveVideoData()
 
 var opt = { peers: ['https://gunptt.herokuapp.com/gun'], localStorage: false, radisk: false };
@@ -56,15 +71,17 @@ gun.on("in", function (msg) {
 })
 
 function addToStreamers(id) {
+  randomBtn.innerText = "Play random stream"
   var remoteRow = document.getElementById(`${id}-row`)
   if (remoteRow != null || remoteRow != undefined) {
-    // console.log("Already added");
     return;
   }
   var row = document.createElement('tr');
   row.id = `${id}-row`;
   row.onclick = function () {
-    console.log("Add canvas");
+    if (selectedRemote != id) {
+      getRemoteVideo(id);
+    }
   }
   row.className = "hover:bg-indigo-50"
   row.style = "cursor: pointer;"
@@ -101,24 +118,11 @@ function removeStreamer(id) {
   }
 }
 
-function removeRemoteVideo(id) {
-  var remoteCanvas = document.getElementById(`${id}-canvas`)
-  if (remoteCanvas !== undefined) {
-    remoteCanvas.parentNode.removeChild(remoteCanvas);
-  }
-}
-
 function getRemoteVideo(id) {
-  var remoteCanvas = document.getElementById(`${id}-canvas`)
-  if (remoteCanvas == undefined) {
-    remoteCanvas = document.createElement('canvas');
-    remoteCanvas.id = `${id}-canvas`;
-    remoteCanvas.width = 480;
-    remoteCanvas.height = 320;
-
-    var videoContainer = document.getElementById("videoContainer");
-    videoContainer.appendChild(remoteCanvas);
-  }
+  selectedRemote = id;
+  remoteCanvas.width = 480;
+  remoteCanvas.height = 320;
+  remoteVideo.srcObject = remoteCanvas.captureStream()
 }
 
 function send(data) {
@@ -185,7 +189,7 @@ function gotStream(stream) {
       }
     } else {
       isLive = true;
-      videoBtn.innerText = "STOP";
+      videoBtn.innerText = "Stop Streaming";
       localContext.scale(scale, scale);
       localCanvas.width = photoContextW * scale;
       localCanvas.height = photoContextH * scale;
@@ -227,9 +231,12 @@ function receiveVideoData() {
   var bufEmpty = true;
 
   return function onmessage(event) {
-    var remoteCanvas = document.getElementById(`${event.id}-canvas`);
+    if (selectedRemote != event.id) {
+      return;
+    }
+    var remoteCanvas = document.getElementById(`remoteCanvas`);
     if (remoteCanvas == null || remoteCanvas == undefined) {
-      // console.log("Have to add canvas");
+      console.log("Cannot find remote canvas");
       return;
     }
     if (event.data.substring(0, 6) === 'scale:') {
@@ -294,7 +301,7 @@ function renderPhoto(dataUrl, id) {
   var img = new Image();
   img.src = dataUrl;
   img.onload = function () {
-    var remoteContext = document.getElementById(`${id}-canvas`).getContext('2d');
+    var remoteContext = document.getElementById(`remoteCanvas`).getContext('2d');
     remoteContext.drawImage(img, 0, 0, photoContextW, photoContextH);
   }
 }
@@ -315,9 +322,11 @@ function updateVideo(now, metadata) {
   draw();
 }
 
-function printBitRate() {
-  bytesReceivedTxt.innerHTML = `Bitrate Received:${bytesReceived * 8}`;
-  bytesSentTxt.innerHTML = `Bitrate sent:${bytesSent * 8}`;
+async function printBitRate() {
+  var data = await (await fetch(('https://gunptt.herokuapp.com/gun/stats.radata'), { method: 'GET', mode: 'cors' })).json();
+  peersConnectedTxt.innerHTML = `Peers connected: ${data.peers.count}`;
+  bytesReceivedTxt.innerHTML = `Bitrate Received: ${bytesReceived * 8}`;
+  bytesSentTxt.innerHTML = `Bitrate sent: ${bytesSent * 8}`;
   bytesReceived = 0;
   bytesSent = 0;
   setTimeout(printBitRate, 1000);
