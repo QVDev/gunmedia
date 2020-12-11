@@ -204,7 +204,7 @@ AudioStream.prototype.getNewPlayer = function (metadata) {
     var context = new AudioContext();
     var writable = Writable(context.destination, {
         context: context,
-        autoend: true
+        autoend: false
     });
 
     /**
@@ -219,8 +219,10 @@ AudioStream.prototype.getNewPlayer = function (metadata) {
         };
         var wavBuffer = PCM.toWav(opts, data);
         context.decodeAudioData(wavBuffer, audioBuffer => {
+            context.currentTime = context.currentTime-DEFAULT_DURATION
             writable.write(audioBuffer);
         });
+        console.log(`TimeStamp:${context.currentTime}`);
     }
 
     function stop() {
