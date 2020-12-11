@@ -148,7 +148,10 @@ function send(data) {
 function getMedia() {
   console.log('Getting user media (audio) ...');
   navigator.mediaDevices.getUserMedia({
-    audio: true,
+    audio: {
+      sampleRate: this.configuration.sampleRate,
+      channelCount: this.configuration.channelCount
+    },
     video: { width: 480, height: 320, frameRate: { ideal: 24, max: 30 }, facingMode: 'environment' }
   })
     .then(gotStream)
@@ -172,6 +175,7 @@ function getScreenMedia() {
 function gotStream(stream) {
   console.log('Received local stream');
   localStream = stream;
+  audioTransmitter.init();
   var audioTracks = localStream.getAudioTracks();
   var videoTracks = localStream.getVideoTracks();
   if (audioTracks.length > 0) {
@@ -229,7 +233,7 @@ function videoOnClick() {
     } else {
       draw();
     }
-    initSpeech();
+    // initSpeech();
   }
 }
 printBitRate();

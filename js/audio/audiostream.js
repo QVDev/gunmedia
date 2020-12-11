@@ -139,73 +139,61 @@ function AudioStream() {
  */
 AudioStream.prototype.getRecorder = function () {
     return new Promise((resolve, reject) => {
-        var args = {
-            audio: {
-                sampleRate: this.configuration.sampleRate,
-                channelCount: this.configuration.channelCount
+        var startedRecording = false;
+        var context = new AudioContext();
+        const mediaRecorder = new MediaRecorder(localStream);
+
+        mediaRecorder.addEventListener("dataavailable", event => {
+            new Response(event.data).arrayBuffer().then(buffer => {
+                // MediaRecorder does not support PCM out of the box -> output needs to be decoded into PCM
+                context.decodeAudioData(buffer, audioBuffer => {
+                    if (startedRecording) { // sends meta-data first
+                        var meta = {
+                            encoding: TARGET_ENCODING,
+                            sampleRate: audioBuffer.sampleRate,
+                            channels: audioBuffer.numberOfChannels,
+                            bufferSize: audioBuffer.sampleRate * audioBuffer.numberOfChannels * this.configuration.duration // approximation based on sampleDuration
+                        }
+                        audioTransmitter.transmitMetadata(JSON.stringify({ meta }))
+                        startedRecording = false;
+                        return
+                    }
+
+                    var data = PCM.process(audioBuffer);
+                    audioTransmitter.transmitAudioData(data);
+                })
+            });
+        });
+
+        var interval;
+
+        var start = () => {
+            audioTransmitter.transmitStartData('started');
+
+            if (mediaRecorder.state == 'recording') {
+                mediaRecorder.stop();
+            }
+
+            mediaRecorder.start();
+            startedRecording = true;
+
+            interval = setInterval(() => {
+                mediaRecorder.stop();
+                mediaRecorder.start();
+            }, this.configuration.duration * SECOND);
+        };
+
+        var stop = () => {
+            if (mediaRecorder.state == 'recording') {
+                clearInterval(interval);
+                mediaRecorder.stop();
+                setTimeout(() => {
+                    audioTransmitter.transmitStopData('stopped');
+                }, this.configuration.duration * SECOND);
             }
         };
-        navigator.mediaDevices.getUserMedia(args)
-            .then(stream => {
-                var startedRecording = false;
-                var context = new AudioContext();
-                const mediaRecorder = new MediaRecorder(stream);
 
-                mediaRecorder.addEventListener("dataavailable", event => {
-                    new Response(event.data).arrayBuffer().then(buffer => {
-                        // MediaRecorder does not support PCM out of the box -> output needs to be decoded into PCM
-                        context.decodeAudioData(buffer, audioBuffer => {
-                            if (startedRecording) { // sends meta-data first
-                                var meta = {
-                                    encoding: TARGET_ENCODING,
-                                    sampleRate: audioBuffer.sampleRate,
-                                    channels: audioBuffer.numberOfChannels,
-                                    bufferSize: audioBuffer.sampleRate * audioBuffer.numberOfChannels * this.configuration.duration // approximation based on sampleDuration
-                                }
-                                audioTransmitter.transmitMetadata(JSON.stringify({ meta }))
-                                startedRecording = false;
-                                return
-                            }
-
-                            var data = PCM.process(audioBuffer);
-                            audioTransmitter.transmitAudioData(data);
-                        })
-                    });
-                });
-
-                var interval;
-
-                var start = () => {
-                    audioTransmitter.transmitStartData('started');
-
-                    if (mediaRecorder.state == 'recording') {
-                        mediaRecorder.stop();
-                    }
-
-                    mediaRecorder.start();
-                    startedRecording = true;
-
-                    interval = setInterval(() => {
-                        mediaRecorder.stop();
-                        mediaRecorder.start();
-                    }, this.configuration.duration * SECOND);
-                };
-
-                var stop = () => {
-                    if (mediaRecorder.state == 'recording') {
-                        clearInterval(interval);
-                        mediaRecorder.stop();
-                        setTimeout(() => {
-                            audioTransmitter.transmitStopData('stopped');
-                        }, this.configuration.duration * SECOND);
-                    }
-                };
-
-                resolve({ start, stop });
-            }).catch(error => {
-                reject(error);
-            });
-
+        resolve({ start, stop });
     });
 }
 

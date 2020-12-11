@@ -2,9 +2,11 @@ var audioTransmitter = (function () {
 
   var audioRecorder
 
-  new AudioStream().getRecorder().then(recorder => {
-    audioRecorder = recorder;
-  });
+  function init() {
+    new AudioStream().getRecorder().then(recorder => {
+      audioRecorder = recorder;
+    });
+  }
 
   function start() {
     audioRecorder.start();
@@ -54,6 +56,7 @@ var audioTransmitter = (function () {
   }
 
   return {
+    init: init,
     start: start,
     stop: stop,
     transmitStartData: transmitStartData,
