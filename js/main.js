@@ -32,9 +32,9 @@ var photoContextW;
 var photoContextH;
 var bytesReceived = 0;
 var bytesSent = 0;
-var jpegQuality = 50 / 100;
+var jpegQuality = 70 / 100;
 var framePeriod = 30;
-var scale = 30 / 100;
+var scale = 40 / 100;
 var remoteScale;
 var keepSending
 
@@ -57,7 +57,7 @@ gun.on("in", function (msg) {
   if (msg.type == "video") {
     sender(msg);
   } else if (msg.type == "audio") {
-    audio(msg)
+    audioReceiver.receive(msg)
   } else if (msg.type == "caption") {
     SETCLUE(msg.data, "remoteVideo", 1);
     if (msg.isFinal && talk !== undefined) {
@@ -121,6 +121,8 @@ function removeStreamer(id) {
 
 function getRemoteVideo(id) {
   selectedRemote = id;
+  var metaData = '{"meta":{"encoding":16,"sampleRate":44100,"channels":1,"bufferSize":22050}}'
+  audioReceiver.metadata(metaData)
   remoteCanvas.width = 480;
   remoteCanvas.height = 320;
   remoteVideo.srcObject = remoteCanvas.captureStream()
@@ -128,6 +130,9 @@ function getRemoteVideo(id) {
 
 function send(data) {
   gun.on("out", {
+    user: gun._.opt.pid,
+    event: data.event,
+    timestamp: new Date().getTime(),
     type: data.type,
     data: data.data,
     isFinal: data.isFinal,
@@ -145,6 +150,18 @@ function getMedia() {
   navigator.mediaDevices.getUserMedia({
     audio: true,
     video: { width: 480, height: 320, frameRate: { ideal: 24, max: 30 }, facingMode: 'environment' }
+  })
+    .then(gotStream)
+    .catch(function (e) {
+      alert('Error: ' + e);
+    });
+}
+
+function getScreenMedia() {
+  console.log('Getting user media (audio) ...');
+  navigator.mediaDevices.getDisplayMedia({
+    audio: true,
+    video: { width: 480, height: 320, frameRate: { ideal: 24, max: 30 } }
   })
     .then(gotStream)
     .catch(function (e) {
@@ -179,11 +196,13 @@ videoBtn.onclick = videoOnClick;
 
 function videoOnClick() {
   if (localVideo.srcObject == undefined || localVideo.srcObject == null) {
-    getMedia();
+    // getMedia();
+    getScreenMedia();
     return;
   }
   if (isLive) {
     isLive = false;
+    audioTransmitter.stop()
     videoBtn.innerText = "GO LIVE";
     if (speech.recognition != undefined) {
       speech.stopCapture();
@@ -196,6 +215,7 @@ function videoOnClick() {
     }
   } else {
     isLive = true;
+    audioTransmitter.start()
     videoBtn.innerText = "Stop Streaming";
     localContext.scale(scale, scale);
     localCanvas.width = photoContextW * scale;
