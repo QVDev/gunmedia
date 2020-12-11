@@ -14,7 +14,7 @@ randomBtn.onclick = function () {
     getRemoteVideo(document.getElementById("streamers").rows[0].cells[0].innerText)
     randomBtn.innerText = "Play random stream"
   } else {
-    randomBtn.innerText = "no streams available"
+    randomBtn.innerText = "No streams available"
   }
 }
 
@@ -134,7 +134,6 @@ function send(data) {
   });
 }
 
-getMedia();
 
 /****************************************************************************
 * User media (audio and video)
@@ -163,65 +162,70 @@ function gotStream(stream) {
   }
 
   // Live video starts
-  // var streamURL = window.URL.createObjectURL(stream);
   localVideo.srcObject = stream;
 
   localVideo.onloadedmetadata = function () {
-    localCanvas.width = photoContextW = localVideo.videoWidth;
-    localCanvas.height = photoContextH = localVideo.videoHeight;
+    localCanvas.width = photoContextW = 480;
+    localCanvas.height = photoContextH = 320;
     console.log('gotStream with witdh and height:', photoContextW, photoContextH);
     videoBtn.innerText = "GO LIVE";
+    videoOnClick();
   };
 
   localContext.save();
-  videoBtn.onclick = videoOnClick;
-
-  function videoOnClick() {
-    if (isLive) {
-      isLive = false;
-      videoBtn.innerText = "GO LIVE";
-      speech.stopCapture();
-
-      if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-        localVideo.pause();
-      } else {
-        clearTimeout(keepSending);
-      }
-    } else {
-      isLive = true;
-      videoBtn.innerText = "Stop Streaming";
-      localContext.scale(scale, scale);
-      localCanvas.width = photoContextW * scale;
-      localCanvas.height = photoContextH * scale;
-
-      // Using photo-data from the video stream to create a matching photocontext
-      if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
-        console.info("using request video frame callback")
-        localVideo.requestVideoFrameCallback(updateVideo)
-        localVideo.play();
-      } else {
-        draw();
-      }
-      initSpeech();
-    }
-  }
-
-  function initSpeech() {
-    speech.recognition.onstart = function () {
-      console.log('Listening started...');
-    }
-
-    speech.recognition.onend = function () {
-      if (isLive) {
-        speech.startCapture();
-      } else {
-        console.log('Listening stopped.');
-      }
-    }
-    speech.startCapture();
-  }
-  printBitRate();
 }
+videoBtn.onclick = videoOnClick;
+
+function videoOnClick() {
+  if (localVideo.srcObject == undefined || localVideo.srcObject == null) {
+    getMedia();
+    return;
+  }
+  if (isLive) {
+    isLive = false;
+    videoBtn.innerText = "GO LIVE";
+    speech.stopCapture();
+
+    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+      localVideo.pause();
+    } else {
+      clearTimeout(keepSending);
+    }
+  } else {
+    isLive = true;
+    videoBtn.innerText = "Stop Streaming";
+    localContext.scale(scale, scale);
+    localCanvas.width = photoContextW * scale;
+    localCanvas.height = photoContextH * scale;
+
+    // Using photo-data from the video stream to create a matching photocontext
+    if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
+      console.info("using request video frame callback")
+      localVideo.requestVideoFrameCallback(updateVideo)
+      localVideo.play();
+    } else {
+      draw();
+    }
+    initSpeech();    
+  }
+}
+printBitRate();
+
+function initSpeech() {
+  speech.recognition.onstart = function () {
+    console.log('Listening started...');
+  }
+
+  speech.recognition.onend = function () {
+    if (isLive) {
+      speech.startCapture();
+    } else {
+      console.log('Listening stopped.');
+    }
+  }
+  speech.startCapture();
+}
+
 
 /*
 // Receives video stream (images)
@@ -302,7 +306,7 @@ function renderPhoto(dataUrl, id) {
   img.src = dataUrl;
   img.onload = function () {
     var remoteContext = document.getElementById(`remoteCanvas`).getContext('2d');
-    remoteContext.drawImage(img, 0, 0, photoContextW, photoContextH);
+    remoteContext.drawImage(img, 0, 0, 480, 320);
   }
 }
 
