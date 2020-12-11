@@ -36,6 +36,7 @@ var jpegQuality = 50 / 100;
 var framePeriod = 30;
 var scale = 30 / 100;
 var remoteScale;
+var keepSending
 
 var speech = new Speech();
 var talk;
@@ -184,7 +185,9 @@ function videoOnClick() {
   if (isLive) {
     isLive = false;
     videoBtn.innerText = "GO LIVE";
-    speech.stopCapture();
+    if (speech.recognition != undefined) {
+      speech.stopCapture();
+    }
 
     if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
       localVideo.pause();
@@ -206,12 +209,17 @@ function videoOnClick() {
     } else {
       draw();
     }
-    initSpeech();    
+    initSpeech();
   }
 }
 printBitRate();
 
 function initSpeech() {
+  if (speech.recognition == undefined) {
+    console.log("Speech detection not possible");
+    return;
+  }
+
   speech.recognition.onstart = function () {
     console.log('Listening started...');
   }
@@ -317,7 +325,7 @@ function draw() {
   if ('requestVideoFrameCallback' in HTMLVideoElement.prototype) {
 
   } else {
-    var keepSending = setTimeout(draw, framePeriod);
+    keepSending = setTimeout(draw, framePeriod);
   }
 }
 
